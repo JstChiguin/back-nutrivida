@@ -167,7 +167,7 @@ export NUTRIVIDA_MONGO_SERVIDOR_PRUEBAS=mongodb://localhost:27019
 mvn clean verify
 ```
 
-Resultado verificado de la versión actual: `BUILD SUCCESS` con **137 pruebas, 0 fallos y 0 omitidas** (11 del módulo común, 35 de autenticación, 45 del servicio clínico y 46 de agenda). Cubren registro, inicio y cierre de sesión, revocación de tokens, 401 y 403, reglas de negocio de citas y agenda, aislamiento entre pacientes, versionado de la API y validaciones.
+Resultado verificado de la versión actual: `BUILD SUCCESS` con **143 pruebas, 0 fallos y 0 omitidas** (11 del módulo común, 35 de autenticación, 51 del servicio clínico y 46 de agenda). Cubren registro, inicio y cierre de sesión, revocación de tokens, 401 y 403, reglas de negocio de citas y agenda, aislamiento entre pacientes, versionado de la API y validaciones.
 
 ## Swagger y endpoints
 
@@ -278,7 +278,6 @@ docker build --build-arg SERVICIO=servicio-clinico -t nutrivida-clinico .
 
 - No existe un endpoint de renovación de tokens: al vencer el JWT hay que iniciar sesión de nuevo.
 - Las rutas de documentación Swagger son públicas en los servicios; los endpoints protegidos exigen token al ejecutarse.
-- Sin token, algunas rutas protegidas bajo prefijos públicos (por ejemplo `GET /api/v1/nutricionistas/yo`) responden 403 en lugar de 401.
 - Los recordatorios automáticos de citas no están implementados y los pagos son simulados.
 - No hay integración continua configurada ni pruebas de carga.
 - El proyecto no debe usarse con datos clínicos reales sin una revisión formal de seguridad y privacidad.
