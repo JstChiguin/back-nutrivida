@@ -1,0 +1,26 @@
+server:
+  port: ${PUERTO_CLINICO:8082}
+  forward-headers-strategy: ${NUTRIVIDA_FORWARD_HEADERS:none}
+
+spring:
+  application:
+    name: servicio-clinico
+  data:
+    mongodb:
+      uri: ${NUTRIVIDA_MONGO_URI:mongodb://localhost:27017/nutrivida}
+      auto-index-creation: true
+
+nutrivida:
+  seguridad:
+    secreto-jwt: ${NUTRIVIDA_JWT_SECRETO:}
+    expiracion-minutos: ${NUTRIVIDA_JWT_EXPIRACION_MINUTOS:60}
+    origenes-permitidos: ${NUTRIVIDA_ORIGENES_PERMITIDOS:http://localhost:5173}
+    rutas-publicas-get:
+      - /api/v1/servicios
+      - /api/v1/servicios/*
+      - /api/v1/nutricionistas
+      - /api/v1/nutricionistas/*
+    rutas-publicas-post:
+      - /api/v1/solicitudes-contacto
+  mongo:
+    colecciones-con-esquema: pacientes,nutricionistas,servicios,fichas_clinicas,mediciones,planes_alimentarios,solicitudes_contacto
