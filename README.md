@@ -105,7 +105,11 @@ cp .env.example .env
 | `NUTRIVIDA_ADMIN_CONTRASENA` | No | Contraseña del administrador inicial. Si queda vacía se usa `NUTRIVIDA_CONTRASENA_DEMO`. Solo se aplica al crear la cuenta; no modifica una cuenta existente. |
 | `NUTRIVIDA_CONTRASENA_DEMO` | No | Contraseña común de las cuentas ficticias que crea el script de datos de demostración. |
 | `NUTRIVIDA_ORIGENES_PERMITIDOS` | No | Orígenes CORS permitidos, separados por comas. Por defecto `http://localhost:5173`. |
-| `NUTRIVIDA_JWT_EXPIRACION_MINUTOS` | No | Vigencia del token. Por defecto 60. |
+| `NUTRIVIDA_JWT_EXPIRACION_MINUTOS` | No | Vigencia del token de acceso. Por defecto 15. |
+| `NUTRIVIDA_SESION_MAXIMA_HORAS` | No | Límite absoluto de la sesión de renovación. Por defecto 8. |
+| `NUTRIVIDA_COOKIE_SEGURA` | No | Atributo `Secure` de la cookie de refresco. Por defecto `true`; el compose local lo deja en `false` para HTTP. |
+| `NUTRIVIDA_COOKIE_SAME_SITE` | No | Atributo `SameSite` de la cookie de refresco. Por defecto `Lax`. |
+| `NUTRIVIDA_HORAS_RECORDATORIO` | No | Ventana de recordatorio de citas confirmadas. Por defecto 24. |
 | `NUTRIVIDA_MONGO_URI` | No | URI de MongoDB. Por defecto `mongodb://localhost:27017/nutrivida`; el Compose fija la base local del contenedor. |
 | `PUERTO_MONGO` | No | Puerto local publicado por el contenedor de MongoDB. Por defecto 27018. |
 
@@ -167,7 +171,9 @@ export NUTRIVIDA_MONGO_SERVIDOR_PRUEBAS=mongodb://localhost:27019
 mvn clean verify
 ```
 
-Resultado verificado de la versión actual: `BUILD SUCCESS` con **143 pruebas, 0 fallos y 0 omitidas** (11 del módulo común, 35 de autenticación, 51 del servicio clínico y 46 de agenda). Cubren registro, inicio y cierre de sesión, revocación de tokens, 401 y 403, reglas de negocio de citas y agenda, aislamiento entre pacientes, versionado de la API y validaciones.
+Para ejecutar la suite completa con un MongoDB temporal aislado en Docker, sin tocar ninguna base de uso habitual, use `powershell -ExecutionPolicy Bypass -File scripts\verificar-backend.ps1`. El script falla si Maven termina con error, si hay pruebas omitidas o fallidas, o si se ejecutan menos pruebas que los métodos `@Test` declarados, y muestra la cobertura JaCoCo por módulo. Sin MongoDB accesible las pruebas de integración se omiten y Maven informa igualmente `BUILD SUCCESS`.
+
+Resultado verificado de la versión actual: **161 métodos `@Test`, 161 ejecutados, 0 fallos y 0 omitidos** (11 del módulo común, 46 de autenticación, 53 del servicio clínico y 51 de agenda). Cobertura de líneas: autenticación 86,0 %, clínico 92,8 %, agenda 91,5 % y común 20,5 % (este módulo se ejercita sobre todo desde las pruebas de integración de los otros). Cubren registro, inicio y cierre de sesión, revocación de tokens, 401 y 403, reglas de negocio de citas y agenda, aislamiento entre pacientes, versionado de la API y validaciones.
 
 ## Swagger y endpoints
 
@@ -226,7 +232,9 @@ Los errores se devuelven con un cuerpo uniforme: `fecha`, `estado`, `codigo`, `m
 - **Contraseñas:** se almacenan con BCrypt y nunca se devuelven en las respuestas. El registro exige entre 8 y 72 caracteres con letras y números.
 - **JWT:** se firma con la clave `NUTRIVIDA_JWT_SECRETO` e incluye identificador del token, emisor, usuario, correo, rol, fecha de emisión y de expiración. La validación comprueba firma, emisor, vigencia y que el token no esté revocado.
 - **Sin estado:** la sesión de Spring Security es `STATELESS` y cada solicitud se autentica con el encabezado `Authorization: Bearer`. Por ser una API sin cookies de sesión, CSRF está deshabilitado.
-- **Revocación:** `POST cerrar-sesion` guarda el identificador del token en la colección `tokens_revocados` hasta su expiración.
+- **Revocación:** `POST cerrar-sesion` guarda el identificador del token en la colección `tokens_revocados` hasta su expiración y revoca la sesión de renovación.
+- **Renovación:** `POST /api/v1/autenticacion/refrescar` exige la cookie HttpOnly `nutrivida_refresco` y la cabecera `X-Nutrivida-Csrf: 1`. El refresh token es opaco, se guarda solo como hash SHA-256 en `tokens_refresco`, rota en cada uso (consumo atómico), revoca toda la familia si se reutiliza uno rotado y no extiende el límite absoluto de la sesión. Desactivar a un usuario o cambiar su rol revoca sus sesiones de renovación; el token de acceso ya emitido sigue válido hasta expirar.
+- **Recordatorios:** `GET /api/v1/citas/recordatorios` (paciente) lista las citas confirmadas propias que comienzan dentro de la ventana configurada. Se muestran en la aplicación; no se envían correos ni mensajes.
 - **Autorización:** cada endpoint sensible declara el rol requerido con `@PreAuthorize`, y los servicios verifican además la propiedad del recurso (por ejemplo, un paciente solo accede a su propia ficha y un nutricionista solo a pacientes que lo autorizaron).
 - **Rutas públicas:** solo las configuradas explícitamente en `application.yml` (catálogo, profesionales, registro, inicio de sesión y contacto).
 - **Datos y validación:** los DTO validan la entrada con Jakarta Validation, incluyendo el RUT chileno, y MongoDB aplica validadores de esquema e índices únicos.
