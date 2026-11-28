@@ -60,4 +60,40 @@ class SesionesRevocadasIntegracionPruebas extends BaseIntegracionClinica {
     void sinTokenSeResponde401() throws Exception {
         ejecutar(get(rutaPerfil(pacientePedro)), null, null).andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void elPerfilPropioDelNutricionistaExigeSesionAunqueElCatalogoSeaPublico() throws Exception {
+        ejecutar(get("/api/nutricionistas/yo"), null, null).andExpect(status().isUnauthorized());
+        ejecutar(get("/api/nutricionistas/yo"), new Persona("x", "x", "token-invalido"), null)
+                .andExpect(status().isUnauthorized());
+        ejecutar(get("/api/nutricionistas/yo"), pacientePedro, null).andExpect(status().isForbidden());
+        ejecutar(get("/api/nutricionistas/yo"), nutricionistaAna, null).andExpect(status().isOk());
+        ejecutar(get("/api/nutricionistas/" + nutricionistaAna.perfilId()), null, null).andExpect(status().isOk());
+    }
+
+    @Test
+    void unTokenRevocadoNoAccedeAlPerfilPropioDelNutricionista() throws Exception {
+        revocar(nutricionistaAna.token());
+
+        ejecutar(get("/api/nutricionistas/yo"), nutricionistaAna, null).andExpect(status().isUnauthorized());
+    }
+
+    private void invalidarSesionesDe(Persona persona) {
+        plantillaMongo.save(new java.util.HashMap<>(Map.of("_id", new org.bson.types.ObjectId(persona.usuarioId()), "desde", Instant.now(),
+                "expiraEn", Instant.now().plus(Duration.ofDays(1)))), "usuarios_invalidados");
+    }
+
+    @Test
+    void invalidarLasSesionesDeUnUsuarioRechazaSusAccessTokensPreviosPeroNoLosPosteriores() throws Exception {
+        ejecutar(get(rutaPerfil(pacientePedro)), pacientePedro, null).andExpect(status().isOk());
+
+        invalidarSesionesDe(pacientePedro);
+
+        ejecutar(get(rutaPerfil(pacientePedro)), pacientePedro, null).andExpect(status().isUnauthorized());
+        ejecutar(get(rutaPerfil(pacientePaula)), pacientePaula, null).andExpect(status().isOk());
+        Thread.sleep(1100);
+        String tokenNuevo = servicioTokens.generar(pacientePedro.usuarioId(), "pedro@nutrivida.test", Rol.PACIENTE);
+        ejecutar(get(rutaPerfil(pacientePedro)), new Persona(pacientePedro.usuarioId(), pacientePedro.perfilId(), tokenNuevo), null)
+                .andExpect(status().isOk());
+    }
 }
