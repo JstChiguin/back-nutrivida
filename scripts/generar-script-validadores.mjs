@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const raizRepositorio = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const carpetaEsquemas = path.join(raizRepositorio, 'backend/comun/src/main/resources/esquemas');
+const carpetaEsquemas = path.join(raizRepositorio, 'comun/src/main/resources/esquemas');
 const archivoScript = path.join(raizRepositorio, 'mongodb/01_crear_colecciones_validadores_indices.js');
 const soloVerificar = process.argv.includes('--verificar');
 
